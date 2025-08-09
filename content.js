@@ -127,23 +127,50 @@ function analyzeAndFilterPage() {
 function filterNonEducationalContent() {
     let educationalContentFound = false;
     
-    // Get all text-containing elements
-    const elements = document.querySelectorAll('p, div, article, section, h1, h2, h3, h4, h5, h6, span, a');
+    // Get all content-containing elements
+    const elements = document.querySelectorAll('p, div, article, section, h1, h2, h3, h4, h5, h6, span, a, li, blockquote, aside, nav, header, footer');
     
     elements.forEach(element => {
-        if (element.offsetHeight === 0 || element.offsetWidth === 0) return; // Skip hidden elements
+        // Skip if element is already processed or is very small
+        if (element.hasAttribute('data-educational-processed') || 
+            element.offsetHeight === 0 || 
+            element.offsetWidth === 0) return;
         
-        const text = element.textContent.toLowerCase();
+        element.setAttribute('data-educational-processed', 'true');
+        
+        const text = element.textContent.toLowerCase().trim();
+        
+        // Skip very short text or navigation elements
+        if (text.length < 15) return;
+        
         const isEducational = analyzeElementContent(text);
+        const isNonEducational = containsNonEducationalContent(text);
         
         if (isEducational) {
             educationalContentFound = true;
             // Highlight educational content
             element.classList.add('educational-content-highlight');
-        } else if (containsNonEducationalContent(text)) {
-            // Dim or hide non-educational content
-            element.classList.add('educational-filter-dimmed');
+            element.style.display = ''; // Ensure it's visible
+        } else if (isNonEducational || (!isEducational && text.length > 50)) {
+            // Hide non-educational content completely
+            element.classList.add('educational-filter-hidden');
+            element.style.display = 'none';
         }
+    });
+
+    // Also filter common non-educational sections
+    const nonEducationalSelectors = [
+        '.advertisement', '.ad', '.ads', '.sponsor', '.promoted',
+        '.entertainment', '.celebrity', '.gossip', '.trending',
+        '.social-share', '.comments', '.sidebar-ads', '.popup',
+        '[class*="ad-"]', '[id*="ad-"]', '[class*="ads-"]', '[id*="ads-"]'
+    ];
+    
+    nonEducationalSelectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(element => {
+            element.classList.add('educational-filter-hidden');
+            element.style.display = 'none';
+        });
     });
 
     return educationalContentFound;
@@ -151,25 +178,76 @@ function filterNonEducationalContent() {
 
 // Analyze if element content is educational
 function analyzeElementContent(text) {
-    if (text.length < 20) return false; // Skip very short text
+    if (text.length < 15) return false; // Skip very short text
     
     let educationalScore = 0;
     let nonEducationalScore = 0;
     
-    // Check for educational keywords
-    educationalKeywords.forEach(keyword => {
-        const matches = (text.match(new RegExp(keyword, 'g')) || []).length;
+    // Strong educational indicators (worth more points)
+    const strongEducationalKeywords = [
+        'tutorial', 'course', 'lesson', 'learn', 'study', 'research', 'academic',
+        'education', 'university', 'college', 'documentation', 'guide', 'how to',
+        'explain', 'theory', 'analysis', 'methodology', 'experiment', 'knowledge',
+        'instruction', 'teaching', 'training', 'skill', 'concept', 'principle'
+    ];
+    
+    // Medium educational indicators
+    const mediumEducationalKeywords = [
+        'science', 'technology', 'programming', 'development', 'engineering',
+        'mathematics', 'history', 'literature', 'philosophy', 'physics',
+        'chemistry', 'biology', 'psychology', 'economics', 'finance', 'business',
+        'medical', 'health', 'nutrition', 'fitness', 'language', 'writing'
+    ];
+    
+    // Check for strong educational keywords (3 points each)
+    strongEducationalKeywords.forEach(keyword => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        const matches = (text.match(regex) || []).length;
+        educationalScore += matches * 3;
+    });
+    
+    // Check for medium educational keywords (1 point each)
+    mediumEducationalKeywords.forEach(keyword => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        const matches = (text.match(regex) || []).length;
         educationalScore += matches;
     });
     
-    // Check for non-educational patterns
-    nonEducationalPatterns.forEach(pattern => {
-        const matches = (text.match(new RegExp(pattern, 'g')) || []).length;
-        nonEducationalScore += matches;
+    // Check for educational phrases
+    const educationalPhrases = [
+        'step by step', 'how to', 'best practices', 'case study', 'research shows',
+        'according to', 'studies show', 'evidence suggests', 'data indicates',
+        'conclusion', 'summary', 'introduction', 'overview', 'definition'
+    ];
+    
+    educationalPhrases.forEach(phrase => {
+        if (text.includes(phrase)) {
+            educationalScore += 2;
+        }
     });
     
-    // Content is educational if it has more educational keywords and fewer non-educational ones
-    return educationalScore >= 2 && educationalScore > nonEducationalScore;
+    // Check for non-educational patterns (negative points)
+    nonEducationalPatterns.forEach(pattern => {
+        const regex = new RegExp(`\\b${pattern}\\b`, 'gi');
+        const matches = (text.match(regex) || []).length;
+        nonEducationalScore += matches * 2;
+    });
+    
+    // Additional non-educational phrases
+    const nonEducationalPhrases = [
+        'click here', 'buy now', 'sale', 'discount', 'free shipping',
+        'celebrity news', 'viral video', 'trending now', 'you won\'t believe',
+        'shocking', 'amazing', 'incredible', 'must see'
+    ];
+    
+    nonEducationalPhrases.forEach(phrase => {
+        if (text.includes(phrase)) {
+            nonEducationalScore += 3;
+        }
+    });
+    
+    // Content is educational if educational score is significantly higher
+    return educationalScore >= 3 && educationalScore > nonEducationalScore;
 }
 
 // Check if content contains non-educational patterns
@@ -205,8 +283,8 @@ function showEducationalFocusMode() {
     notification.innerHTML = `
         <div class="educational-focus-content">
             <span class="educational-focus-icon">🎓</span>
-            <span class="educational-focus-text">Educational Focus Mode Active</span>
-            <button id="educational-focus-disable" class="educational-focus-btn">Disable</button>
+            <span class="educational-focus-text">Showing only educational content</span>
+            <button id="educational-focus-disable" class="educational-focus-btn">Show All</button>
         </div>
     `;
 
@@ -304,9 +382,11 @@ function showEducationalContent() {
     if (focusStyles) focusStyles.remove();
     if (overlayStyles) overlayStyles.remove();
     
-    // Remove all filter classes
-    document.querySelectorAll('.educational-filter-dimmed, .educational-content-highlight, .educational-badge').forEach(el => {
-        el.classList.remove('educational-filter-dimmed', 'educational-content-highlight', 'educational-badge');
+    // Remove all filter classes and restore visibility
+    document.querySelectorAll('.educational-filter-hidden, .educational-filter-dimmed, .educational-content-highlight, .educational-badge').forEach(el => {
+        el.classList.remove('educational-filter-hidden', 'educational-filter-dimmed', 'educational-content-highlight', 'educational-badge');
+        el.style.display = ''; // Restore original display
+        el.removeAttribute('data-educational-processed'); // Allow reprocessing
     });
     
     document.body.classList.remove('educational-focus-mode');
