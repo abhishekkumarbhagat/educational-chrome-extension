@@ -1,0 +1,93 @@
+/* Educational Content Filter - Content Styles */
+
+/* Hide non-educational elements when filter is active */
+.educational-filter-hidden {
+    display: none !important;
+}
+
+/* Highlight educational content */
+.educational-content-highlight {
+    border: 2px solid #667eea !important;
+    border-radius: 4px !important;
+    box-shadow: 0 0 10px rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Educational badge for identified content */
+.educational-badge {
+    position: relative;
+}
+
+.educational-badge::after {
+    content: "🎓 Educational";
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Smooth transitions for filter effects */
+.educational-filter-transition {
+    transition: opacity 0.3s ease, transform 0.3s ease !important;
+}
+
+/* Dimmed non-educational content (alternative to hiding) */
+.educational-filter-dimmed {
+    opacity: 0.3 !important;
+    filter: grayscale(70%) !important;
+    pointer-events: none !important;
+}
+
+/* Focus mode styles */
+.educational-focus-mode {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)) !important;
+}
+
+/* Learning progress indicator */
+.educational-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    z-index: 999998;
+    transition: width 0.3s ease;
+}
+
+/* Educational tooltip styles */
+.educational-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    z-index: 999999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.educational-tooltip.show {
+    opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .educational-badge::after {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .educational-filter-overlay .educational-filter-content {
+        margin: 20px;
+        padding: 30px 20px;
+    }
+} 

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educational Content Filter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🎓</div>
+            <h1>Educational Filter</h1>
+        </div>
+        
+        <div class="toggle-section">
+            <div class="toggle-container">
+                <label class="switch">
+                    <input type="checkbox" id="filterToggle">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Filter Active</span>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <div class="stat-item">
+                <span class="stat-number" id="blockedCount">0</span>
+                <span class="stat-label">Non-educational sites blocked</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="allowedCount">0</span>
+                <span class="stat-label">Educational sites accessed</span>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>Educational Categories</h3>
+            <div class="category-list">
+                <label class="category-item">
+                    <input type="checkbox" id="academic" checked>
+                    <span>Academic & Research</span>
+                </label>
+                <label class="category-item">
+                    <input type="checkbox" id="online-courses" checked>
+                    <span>Online Courses</span>
+                </label>
+                <label class="category-item">
+                    <input type="checkbox" id="documentation" checked>
+                    <span>Technical Documentation</span>
+                </label>
+                <label class="category-item">
+                    <input type="checkbox" id="news-educational" checked>
+                    <span>Educational News</span>
+                </label>
+                <label class="category-item">
+                    <input type="checkbox" id="reference" checked>
+                    <span>Reference & Dictionaries</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="whitelist-section">
+            <h3>Custom Educational Sites</h3>
+            <div class="input-group">
+                <input type="text" id="customSite" placeholder="Add educational domain (e.g., example.edu)">
+                <button id="addSite">Add</button>
+            </div>
+            <div class="custom-sites" id="customSitesList"></div>
+        </div>
+
+        <div class="footer">
+            <button id="resetStats" class="secondary-btn">Reset Statistics</button>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html> 
