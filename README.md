@@ -23,7 +23,7 @@ A Chrome extension that helps users focus on educational content by filtering ou
 
 1. Clone this repository:
 ```bash
-git clone https://github.com/yourusername/educational-chrome-extension.git
+git clone https://github.com/abhishekkumarbhagat/educational-chrome-extension.git
 cd educational-chrome-extension
 ```
 
@@ -175,7 +175,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 If you encounter any issues or have suggestions:
-1. Check the [Issues](https://github.com/yourusername/educational-chrome-extension/issues) page
+1. Check the [Issues](https://github.com/abhishekkumarbhagat/educational-chrome-extension/issues) page
 2. Create a new issue with detailed information
 3. Include your Chrome version and extension version
 
