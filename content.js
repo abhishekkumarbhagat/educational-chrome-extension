@@ -46,6 +46,13 @@ const educationalKeywords = [
     'analysis', 'methodology', 'experiment', 'data', 'statistics'
 ];
 
+// Non-educational content patterns to filter
+const nonEducationalPatterns = [
+    'entertainment', 'celebrity', 'gossip', 'sports', 'gaming', 'viral',
+    'trending', 'fashion', 'lifestyle', 'shopping', 'deals', 'sale',
+    'advertisement', 'promotion', 'social media', 'influencer', 'memes'
+];
+
 // Initialize the content script
 async function initialize() {
     try {
@@ -76,177 +83,187 @@ async function initialize() {
     }
 }
 
-// Analyze current page and determine if it's educational
+// Analyze current page and determine filtering approach
 function analyzeAndFilterPage() {
     const currentDomain = window.location.hostname.toLowerCase();
     const currentUrl = window.location.href.toLowerCase();
-    const pageTitle = document.title.toLowerCase();
-    const pageContent = document.body ? document.body.innerText.toLowerCase() : '';
+    
+    let isEducationalSite = false;
 
-    let isEducational = false;
-    let category = null;
-
-    // Check custom sites first
+    // Check if this is a known educational site
     if (customSites.some(site => currentDomain.includes(site))) {
-        isEducational = true;
-        category = 'custom';
+        isEducationalSite = true;
     }
 
-    // Check against educational domains by category
-    if (!isEducational) {
+    if (!isEducationalSite) {
         for (const [cat, domains] of Object.entries(educationalDomains)) {
             if (categories[cat] && domains.some(domain => 
                 currentDomain.includes(domain) || currentUrl.includes(domain)
             )) {
-                isEducational = true;
-                category = cat;
+                isEducationalSite = true;
                 break;
             }
         }
     }
 
-    // Content-based analysis if domain check fails
-    if (!isEducational) {
-        const keywordCount = educationalKeywords.reduce((count, keyword) => {
-            return count + (pageTitle.split(keyword).length - 1) + 
-                   (pageContent.split(keyword).length - 1) / 100; // Weight content less than title
-        }, 0);
-
-        // If enough educational keywords found
-        if (keywordCount >= 3) {
-            isEducational = true;
-            category = 'content-based';
-        }
-    }
-
     // Update statistics
-    updateStats(isEducational);
+    updateStats(isEducationalSite);
 
-    // Apply filter
-    if (!isEducational && filterActive) {
-        blockNonEducationalContent();
-    } else if (isEducational) {
-        // Ensure content is visible (in case filter was toggled)
-        showEducationalContent();
+    if (isEducationalSite) {
+        // On educational sites, highlight educational content
+        highlightEducationalContent();
+    } else {
+        // On non-educational sites, filter content or show focused mode
+        const educationalContentFound = filterNonEducationalContent();
+        
+        if (!educationalContentFound) {
+            // Only show overlay if no educational content is found
+            showEducationalFocusMode();
+        }
     }
 }
 
-// Block non-educational content
-function blockNonEducationalContent() {
-    // Create overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'educational-filter-overlay';
-    overlay.innerHTML = `
-        <div class="educational-filter-content">
-            <div class="educational-filter-icon">🎓</div>
-            <h2>Educational Content Only</h2>
-            <p>This site has been filtered as it doesn't appear to contain educational content.</p>
-            <p>Focus on learning with educational websites, courses, documentation, and research materials.</p>
-            <div class="educational-filter-suggestions">
-                <h3>Try these educational sites instead:</h3>
-                <ul>
-                    <li><a href="https://khanacademy.org" target="_blank">Khan Academy - Free online courses</a></li>
-                    <li><a href="https://coursera.org" target="_blank">Coursera - University courses online</a></li>
-                    <li><a href="https://stackoverflow.com" target="_blank">Stack Overflow - Programming help</a></li>
-                    <li><a href="https://wikipedia.org" target="_blank">Wikipedia - Encyclopedia</a></li>
-                </ul>
-            </div>
-            <button id="educational-filter-disable" class="educational-filter-btn">
-                Disable Filter for This Session
-            </button>
+// Filter out non-educational content and highlight educational content
+function filterNonEducationalContent() {
+    let educationalContentFound = false;
+    
+    // Get all text-containing elements
+    const elements = document.querySelectorAll('p, div, article, section, h1, h2, h3, h4, h5, h6, span, a');
+    
+    elements.forEach(element => {
+        if (element.offsetHeight === 0 || element.offsetWidth === 0) return; // Skip hidden elements
+        
+        const text = element.textContent.toLowerCase();
+        const isEducational = analyzeElementContent(text);
+        
+        if (isEducational) {
+            educationalContentFound = true;
+            // Highlight educational content
+            element.classList.add('educational-content-highlight');
+        } else if (containsNonEducationalContent(text)) {
+            // Dim or hide non-educational content
+            element.classList.add('educational-filter-dimmed');
+        }
+    });
+
+    return educationalContentFound;
+}
+
+// Analyze if element content is educational
+function analyzeElementContent(text) {
+    if (text.length < 20) return false; // Skip very short text
+    
+    let educationalScore = 0;
+    let nonEducationalScore = 0;
+    
+    // Check for educational keywords
+    educationalKeywords.forEach(keyword => {
+        const matches = (text.match(new RegExp(keyword, 'g')) || []).length;
+        educationalScore += matches;
+    });
+    
+    // Check for non-educational patterns
+    nonEducationalPatterns.forEach(pattern => {
+        const matches = (text.match(new RegExp(pattern, 'g')) || []).length;
+        nonEducationalScore += matches;
+    });
+    
+    // Content is educational if it has more educational keywords and fewer non-educational ones
+    return educationalScore >= 2 && educationalScore > nonEducationalScore;
+}
+
+// Check if content contains non-educational patterns
+function containsNonEducationalContent(text) {
+    if (text.length < 20) return false;
+    
+    return nonEducationalPatterns.some(pattern => 
+        text.includes(pattern) && !educationalKeywords.some(keyword => text.includes(keyword))
+    );
+}
+
+// Highlight educational content on educational sites
+function highlightEducationalContent() {
+    const elements = document.querySelectorAll('article, .post, .content, main, section');
+    
+    elements.forEach(element => {
+        const text = element.textContent.toLowerCase();
+        if (analyzeElementContent(text)) {
+            element.classList.add('educational-badge');
+        }
+    });
+}
+
+// Show educational focus mode (less aggressive than full block)
+function showEducationalFocusMode() {
+    // Remove any existing overlays
+    const existingOverlay = document.getElementById('educational-filter-overlay');
+    if (existingOverlay) return; // Don't show multiple overlays
+    
+    // Create a less intrusive notification
+    const notification = document.createElement('div');
+    notification.id = 'educational-focus-notification';
+    notification.innerHTML = `
+        <div class="educational-focus-content">
+            <span class="educational-focus-icon">🎓</span>
+            <span class="educational-focus-text">Educational Focus Mode Active</span>
+            <button id="educational-focus-disable" class="educational-focus-btn">Disable</button>
         </div>
     `;
 
-    // Add styles
+    // Add styles for the notification
     const styles = `
-        <style id="educational-filter-styles">
-            #educational-filter-overlay {
+        <style id="educational-focus-styles">
+            #educational-focus-notification {
                 position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
                 z-index: 999999;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 display: flex;
                 align-items: center;
-                justify-content: center;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                gap: 10px;
+                max-width: 350px;
+                animation: slideIn 0.3s ease-out;
             }
             
-            .educational-filter-content {
-                background: white;
-                padding: 40px;
-                border-radius: 20px;
-                text-align: center;
-                max-width: 500px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
             }
             
-            .educational-filter-icon {
-                font-size: 60px;
-                margin-bottom: 20px;
+            .educational-focus-content {
+                display: flex;
+                align-items: center;
+                gap: 10px;
             }
             
-            .educational-filter-content h2 {
-                color: #333;
-                margin-bottom: 15px;
-                font-size: 28px;
+            .educational-focus-icon {
+                font-size: 20px;
             }
             
-            .educational-filter-content p {
-                color: #666;
-                margin-bottom: 15px;
-                line-height: 1.6;
-            }
-            
-            .educational-filter-suggestions {
-                background: #f8f9fa;
-                padding: 20px;
-                border-radius: 10px;
-                margin: 20px 0;
-                text-align: left;
-            }
-            
-            .educational-filter-suggestions h3 {
-                color: #333;
-                margin-bottom: 15px;
-                font-size: 18px;
-            }
-            
-            .educational-filter-suggestions ul {
-                list-style: none;
-                padding: 0;
-            }
-            
-            .educational-filter-suggestions li {
-                margin-bottom: 10px;
-            }
-            
-            .educational-filter-suggestions a {
-                color: #667eea;
-                text-decoration: none;
+            .educational-focus-text {
+                font-size: 14px;
                 font-weight: 500;
             }
             
-            .educational-filter-suggestions a:hover {
-                text-decoration: underline;
-            }
-            
-            .educational-filter-btn {
-                background: #667eea;
+            .educational-focus-btn {
+                background: rgba(255, 255, 255, 0.2);
                 color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                padding: 6px 12px;
+                border-radius: 6px;
                 cursor: pointer;
-                font-size: 16px;
-                font-weight: 500;
+                font-size: 12px;
                 transition: background-color 0.2s;
             }
             
-            .educational-filter-btn:hover {
-                background: #5a67d8;
+            .educational-focus-btn:hover {
+                background: rgba(255, 255, 255, 0.3);
             }
         </style>
     `;
@@ -254,23 +271,45 @@ function blockNonEducationalContent() {
     // Add styles to head
     document.head.insertAdjacentHTML('beforeend', styles);
     
-    // Add overlay to body
-    document.body.appendChild(overlay);
+    // Add notification to body
+    document.body.appendChild(notification);
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (notification && notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
 
     // Add click handler for disable button
-    document.getElementById('educational-filter-disable').addEventListener('click', () => {
+    document.getElementById('educational-focus-disable').addEventListener('click', () => {
         filterActive = false;
+        notification.remove();
         showEducationalContent();
     });
+    
+    // Apply focus mode styling to the page
+    document.body.classList.add('educational-focus-mode');
 }
 
-// Show educational content (remove overlay)
+// Show educational content (remove overlays and restore content)
 function showEducationalContent() {
+    const notification = document.getElementById('educational-focus-notification');
     const overlay = document.getElementById('educational-filter-overlay');
-    const styles = document.getElementById('educational-filter-styles');
+    const focusStyles = document.getElementById('educational-focus-styles');
+    const overlayStyles = document.getElementById('educational-filter-styles');
     
+    if (notification) notification.remove();
     if (overlay) overlay.remove();
-    if (styles) styles.remove();
+    if (focusStyles) focusStyles.remove();
+    if (overlayStyles) overlayStyles.remove();
+    
+    // Remove all filter classes
+    document.querySelectorAll('.educational-filter-dimmed, .educational-content-highlight, .educational-badge').forEach(el => {
+        el.classList.remove('educational-filter-dimmed', 'educational-content-highlight', 'educational-badge');
+    });
+    
+    document.body.classList.remove('educational-focus-mode');
 }
 
 // Update statistics
@@ -313,14 +352,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'updateCategories':
             categories = message.categories;
             if (filterActive) {
-                analyzeAndFilterPage();
+                showEducationalContent(); // Clear existing filters
+                setTimeout(() => analyzeAndFilterPage(), 100); // Reapply with new categories
             }
             break;
             
         case 'updateCustomSites':
             customSites = message.customSites;
             if (filterActive) {
-                analyzeAndFilterPage();
+                showEducationalContent(); // Clear existing filters
+                setTimeout(() => analyzeAndFilterPage(), 100); // Reapply with new sites
             }
             break;
     }
@@ -331,4 +372,17 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {
     initialize();
-} 
+}
+
+// Re-analyze content when page changes (for single-page applications)
+let lastUrl = location.href;
+new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastUrl) {
+        lastUrl = url;
+        if (filterActive) {
+            showEducationalContent(); // Clear existing
+            setTimeout(() => analyzeAndFilterPage(), 500); // Reanalyze new content
+        }
+    }
+}).observe(document, { subtree: true, childList: true }); 
